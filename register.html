@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สมัครสมาชิก - สถานกีฬาและสุขภาพ</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Sarabun', sans-serif;
+        }
+        .register-card {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        .register-title {
+            font-size: 1.5rem;
+            color: #e96b04;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Sarabun', sans-serif;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .input-group input:focus {
+            border-color: #e96b04;
+        }
+        
+        /* === ส่วนเช็คเงื่อนไขรหัสผ่าน === */
+        .password-rules {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+            padding-left: 5px;
+        }
+        .rule-item {
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .rule-item i { font-size: 0.7rem; }
+        
+        /* สีสถานะ */
+        .status-invalid { color: #e74c3c; } /* แดง */
+        .status-valid { color: #2ecc71; }   /* เขียว */
+
+        .btn-register {
+            width: 100%;
+            padding: 12px;
+            background-color: #e96b04;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 15px;
+        }
+        .btn-register:hover {
+            background-color: #d35400;
+        }
+        .btn-register:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .login-link {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .login-link a {
+            color: #e96b04;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCdqxqHDF1kx1eauj5CMjXzOvya_PL9b1s",
+            authDomain: "html-80dea.firebaseapp.com",
+            databaseURL: "https://html-80dea-default-rtdb.firebaseio.com",
+            projectId: "html-80dea",
+            storageBucket: "html-80dea.firebasestorage.app",
+            messagingSenderId: "539935314409",
+            appId: "1:539935314409:web:8a04fec151113e372d3b78",
+            measurementId: "G-W9WT2NWDPB"
+        };
+
+        // เริ่มต้นทำงาน Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        // สร้างตัวแปร database ไว้ใช้งานทั่วทั้งเว็บ
+        const db = firebase.database();
+    </script>
+    </head>
+<body>
+
+    <div class="register-card">
+        <div class="register-title">สมัครสมาชิกใหม่</div>
+
+        <form onsubmit="handleRegister(event)">
+            <div class="input-group">
+                <label>ชื่อ-นามสกุล (Full Name)</label>
+                <input type="text" id="reg-fullname" required placeholder="เช่น สมชาย ใจดี">
+            </div>
+            
+            <div class="input-group">
+                <label>ชื่อผู้ใช้งาน (รหัสนักศึกษา 8 ตัว)</label>
+                <input type="text" id="reg-username" maxlength="8" required placeholder="เช่น B6xxxxxx" onkeyup="this.value = this.value.toUpperCase()">
+            </div>
+
+            <div class="input-group">
+                <label>รหัสผ่าน (Password)</label>
+                <input type="password" id="reg-password" required placeholder="ตั้งรหัสผ่าน" onkeyup="checkPasswordRealTime()">
+                
+                <div class="password-rules">
+                    <div id="rule-length" class="rule-item status-invalid">
+                        <i class="fas fa-times-circle"></i> ความยาวอย่างน้อย 8 ตัวอักษร
+                    </div>
+                    <div id="rule-letter" class="rule-item status-invalid">
+                        <i class="fas fa-times-circle"></i> มีตัวอักษรภาษาอังกฤษ (A-Z, a-z)
+                    </div>
+                    <div id="rule-number" class="rule-item status-invalid">
+                        <i class="fas fa-times-circle"></i> มีตัวเลข (0-9)
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>ยืนยันรหัสผ่าน (Confirm Password)</label>
+                <input type="password" id="reg-confirm-password" required placeholder="กรอกรหัสผ่านอีกครั้ง">
+            </div>
+
+            <button type="submit" id="btn-submit" class="btn-register">สมัครสมาชิก</button>
+        </form>
+
+        <div class="login-link">
+            มีบัญชีผู้ใช้แล้ว? <a href="login.html">เข้าสู่ระบบ</a>
+        </div>
+    </div>
+
+    <script>
+        // ตัวแปรเช็คว่ารหัสผ่านผ่านเกณฑ์หรือไม่
+        let isPasswordOk = false;
+
+        function checkPasswordRealTime() {
+            const password = document.getElementById('reg-password').value;
+            
+            // เงื่อนไข 1: ความยาว >= 8
+            const hasLength = password.length >= 8;
+            updateRuleStatus('rule-length', hasLength);
+
+            // เงื่อนไข 2: มีตัวอักษร A-Z หรือ a-z
+            const hasLetter = /[a-zA-Z]/.test(password);
+            updateRuleStatus('rule-letter', hasLetter);
+
+            // เงื่อนไข 3: มีตัวเลข 0-9
+            const hasNumber = /[0-9]/.test(password);
+            updateRuleStatus('rule-number', hasNumber);
+
+            // สรุปผล
+            isPasswordOk = hasLength && hasLetter && hasNumber;
+        }
+
+        function updateRuleStatus(elementId, isValid) {
+            const el = document.getElementById(elementId);
+            const icon = el.querySelector('i');
+
+            if (isValid) {
+                el.classList.remove('status-invalid');
+                el.classList.add('status-valid');
+                icon.className = 'fas fa-check-circle'; // เปลี่ยนเป็นติ๊กถูก
+            } else {
+                el.classList.remove('status-valid');
+                el.classList.add('status-invalid');
+                icon.className = 'fas fa-times-circle'; // เปลี่ยนเป็นกากบาท
+            }
+        }
+
+        // 🔥 ฟังก์ชันสมัครสมาชิก (ส่งขึ้น Firebase)
+        function handleRegister(event) {
+            event.preventDefault();
+
+            const fullname = document.getElementById('reg-fullname').value.trim();
+            const username = document.getElementById('reg-username').value.trim().toUpperCase(); 
+            const password = document.getElementById('reg-password').value;
+            const confirmPassword = document.getElementById('reg-confirm-password').value;
+
+            // 1. เช็ครหัสนักศึกษา (ต้อง 8 ตัว)
+            if (username.length !== 8) {
+                alert("⚠️ รหัสนักศึกษาต้องมี 8 ตัวอักษรครับ");
+                return;
+            }
+
+            // 2. เช็คความปลอดภัยรหัสผ่าน (จากเงื่อนไข Real-time)
+            if (!isPasswordOk) {
+                alert("⚠️ รหัสผ่านไม่ปลอดภัย! กรุณาตั้งให้ครบตามเงื่อนไขครับ");
+                return;
+            }
+
+            // 3. เช็ครหัสผ่านตรงกันไหม
+            if(password !== confirmPassword) {
+                alert("⚠️ รหัสผ่านยืนยันไม่ตรงกัน!");
+                return;
+            }
+
+            // 4. 🔥 เช็คว่าซ้ำใน Firebase หรือไม่
+            const userRef = db.ref('users/' + username);
+            userRef.once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    alert("❌ รหัสนักศึกษานี้ (Username) ถูกใช้งานไปแล้วครับ");
+                } else {
+                    // 5. 🔥 ถ้ายังไม่มี -> บันทึกข้อมูลลง Firebase
+                    userRef.set({
+                        username: username,
+                        password: password,
+                        fullname: fullname,
+                        schedule: {},   // เตรียมที่ว่างสำหรับตาราง
+                        templates: []   // เตรียมที่ว่างสำหรับ Template
+                    }).then(() => {
+                        alert("✅ สมัครสมาชิกสำเร็จ! ข้อมูลอยู่บน Cloud แล้ว");
+                        window.location.href = 'login.html';
+                    }).catch((error) => {
+                        alert("เกิดข้อผิดพลาด: " + error.message);
+                    });
+                }
+            }).catch((error) => {
+                alert("ไม่สามารถเชื่อมต่อ Server ได้: " + error.message);
+            });
+        }
+    </script>
+
+</body>
+</html>
